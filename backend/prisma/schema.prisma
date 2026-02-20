@@ -1,0 +1,126 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  AGENT
+}
+
+enum NumberStatus {
+  CONNECTED
+  CONNECTING
+  DISCONNECTED
+}
+
+enum ContactState {
+  NEW
+  QUALIFIED
+  NEGOTIATION
+  WON
+  LOST
+}
+
+model User {
+  id              String        @id @default(cuid())
+  name            String
+  email           String        @unique
+  passwordHash    String
+  role            Role          @default(AGENT)
+  assignedChats   Chat[]        @relation("AssignedAgent")
+  activityLogs    ActivityLog[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model WhatsAppNumber {
+  id              String        @id @default(cuid())
+  name            String
+  phoneNumber     String        @unique
+  status          NumberStatus  @default(DISCONNECTED)
+  lastConnection  DateTime?
+  sessionPath     String
+  chats           Chat[]
+  createdAt       DateTime      @default(now())
+}
+
+model Contact {
+  id              String        @id @default(cuid())
+  phoneNumber     String        @unique
+  name            String?
+  state           ContactState  @default(NEW)
+  tags            String[]
+  opportunities   Opportunity[]
+  chats           Chat[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model Chat {
+  id              String          @id @default(cuid())
+  whatsappNumber  WhatsAppNumber  @relation(fields: [whatsappNumberId], references: [id])
+  whatsappNumberId String
+  contact         Contact         @relation(fields: [contactId], references: [id])
+  contactId       String
+  assignedAgent   User?           @relation("AssignedAgent", fields: [assignedAgentId], references: [id])
+  assignedAgentId String?
+  messages        Message[]
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([whatsappNumberId, contactId])
+}
+
+model Message {
+  id            String    @id @default(cuid())
+  chat          Chat      @relation(fields: [chatId], references: [id])
+  chatId        String
+  direction     String
+  content       String
+  externalId    String?
+  sentAt        DateTime  @default(now())
+}
+
+model PipelineStage {
+  id           String        @id @default(cuid())
+  name         String
+  position     Int
+  opportunities Opportunity[]
+}
+
+model Opportunity {
+  id           String        @id @default(cuid())
+  title        String
+  estimatedValue Float       @default(0)
+  contact      Contact       @relation(fields: [contactId], references: [id])
+  contactId    String
+  stage        PipelineStage @relation(fields: [stageId], references: [id])
+  stageId      String
+  createdAt    DateTime      @default(now())
+}
+
+model BotConfig {
+  id                 String   @id @default(cuid())
+  welcomeMessage     String
+  outOfOfficeMessage String
+  keywordResponses   Json
+  businessHoursStart String
+  businessHoursEnd   String
+  timezone           String   @default("America/Mexico_City")
+  updatedAt          DateTime @updatedAt
+}
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  action     String
+  metadata   Json?
+  user       User?    @relation(fields: [userId], references: [id])
+  userId     String?
+  createdAt  DateTime @default(now())
+}
