@@ -1,0 +1,6 @@
+node_modules
+.env
+backend/sessions
+backend/prisma/dev.db
+frontend/dist
+.DS_Store
